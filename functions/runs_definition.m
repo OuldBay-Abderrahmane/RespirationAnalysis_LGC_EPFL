@@ -12,7 +12,11 @@ function[runs, n_runs] = runs_definition(study_nm, sub_nm, condition)
 % variable allows to take into account this so that the corresponding runs
 % are still included in the behavioral analysis but not in the fMRI
 % analysis.
-% See subject_condition.m for the full list.
+% 'behavior': behavioral analysis
+% 'behavior_no_sat': behavioral analysis without the runs where subject
+% saturated
+% 'fMRI': fMRI analysis
+% 'fMRI_no_move': fMRI analysis without runs where too much movement
 %
 % OUTPUTS
 % runs: structure with number of runs for each task and also the order of
@@ -177,6 +181,97 @@ switch study_nm
                         runs.runsToKeep = 2:4;
                         runs.runsToIgnore = 1;
                     case '055'
+                        runs.runsToKeep = 1:3;
+                        runs.runsToIgnore = 4;
+                    case '058'
+                        runs.runsToKeep = 1:3;
+                        runs.runsToIgnore = 4;
+                    case '061'
+                        runs.runsToKeep = 2:4;
+                        runs.runsToIgnore = 1;
+                    case '062'
+                        runs.runsToKeep = [1,2,4];
+                        runs.runsToIgnore = 3;
+                    case '069'
+                        runs.runsToKeep = [1,3];
+                        runs.runsToIgnore = [2,4];
+                    case '076'
+                        runs.runsToKeep = [1,3];
+                        runs.runsToIgnore = [2,4];
+                    case '081'
+                        runs.runsToKeep = [1,2,4];
+                        runs.runsToIgnore = 3;
+                    case '082'
+                        runs.runsToKeep = [1,2];
+                        runs.runsToIgnore = [3,4];
+                    case '083'
+                        runs.runsToKeep = [1,2,3];
+                        runs.runsToIgnore = 4;
+                    case '088'
+                        runs.runsToKeep = [1,2,3];
+                        runs.runsToIgnore = 4;
+                    case '095'
+                        runs.runsToKeep = 1;
+                        runs.runsToIgnore = [2,3,4];
+                    case '097'
+                        runs.runsToKeep = 2:4;
+                        runs.runsToIgnore = 1;
+                    case '099'
+                        runs.runsToKeep = [1,2,4];
+                        runs.runsToIgnore = 3;
+                    case '100'
+                        runs.runsToKeep = [1,2];
+                        runs.runsToIgnore = [3,4];
+                end
+                %% respiration
+            case 'respiration_and_noSatRun'
+                switch sub_nm
+                    case '002'
+                        runs.runsToKeep = [1,2,4];
+                        runs.runsToIgnore = 3;
+                    case '004'
+                        runs.runsToKeep = [1,2,4];
+                        runs.runsToIgnore = 3;
+                    case '005'
+                        runs.runsToKeep = 1:3;
+                        runs.runsToIgnore = 4;
+                    case '012'
+                        runs.runsToKeep = 1:3;
+                        runs.runsToIgnore = 4;
+                    case '022'
+                        runs.runsToKeep = [1,2,4];
+                        runs.runsToIgnore = 3;
+                    case '027'
+                        runs.runsToKeep = 1;
+                        runs.runsToIgnore = [2,3,4];
+                    case '032'
+                        runs.runsToKeep = [1,2,4];
+                        runs.runsToIgnore = 3;
+                    case '038'
+                        runs.runsToKeep = 1;
+                        runs.runsToIgnore = 2:4;
+                    case '044'
+                        runs.runsToKeep = [1,2,4];
+                        runs.runsToIgnore = 3;
+                    case '047'
+                        runs.runsToKeep = [];
+                        runs.runsToIgnore = 1:4;
+                    case '048'
+                        runs.runsToKeep = [1,3,4];
+                        runs.runsToIgnore = 2;
+                    case '050'
+                        runs.runsToKeep = 2;
+                        runs.runsToIgnore = [1,3,4];
+                    case '052'
+                        runs.runsToKeep = [2,4];
+                        runs.runsToIgnore = [1,3];
+                    case '054'
+                        runs.runsToKeep = 2:4;
+                        runs.runsToIgnore = 1;
+                    case '055'
+                        runs.runsToKeep = 1:3;
+                        runs.runsToIgnore = 4;
+                    case '056'
                         runs.runsToKeep = 1:3;
                         runs.runsToIgnore = 4;
                     case '058'

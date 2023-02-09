@@ -1,7 +1,6 @@
-function [signalFiltered, time] = filterSignal(folderPath, file, filterBand, freq)
-
-    [signal, time] = siemens_RESPload2(fullfile(folderPath, file));
+function [signalFiltered, time, start] = filterSignal(folderPath, file, filterBand, freq)
     
+    [signal, time, start] = siemens_RESPload2(fullfile(folderPath, file));
     meanSignal = mean(signal);
     stdSignal= std(signal);
     signalTroncated = remove(signal, meanSignal, stdSignal); 

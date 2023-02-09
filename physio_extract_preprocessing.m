@@ -10,20 +10,27 @@ commonPath = fullfile('C:', 'Users', 'ouldbay', ...
 folderPattern = fullfile(commonPath, 'CID*');
 folders = dir(folderPattern);
 
-%% 0.0 Convert .resp file to .mat using siemens_RESPload2
-% respDataFileName = fullfile(commonPath, "CID002\CID002_LGCMot_run3.resp");
-% 
-% rawSignal = load("CID002\CID002_LGCMot_run3.mat");
-% figure; raw_hdl = plot(rawSignal.signal, 'Color', 'b');
-% hold on
-% 
-% signalSmooth = load("CID002\s_f_CID002_LGCMot_run3.mat");
-% sm_hdl = plot(signalSmooth.cleanedRespiData, 'Color', 'r');
-% hold on
-% 
-% signal_band = load("CID002\f_CID002_LGCMot_run3.mat");
-% filter_hdl = plot(signal_band.signalFiltered, 'Color', 'g');
-% 
+behavior = load('behavioral_prm.mat').bayesian_mdl.mdl_3;
+metabolits_file = load('MRS_data.mat');
+
+features = {'BreathingRate'; 'MinuteVentilation'; 'AverageTidalVolume'};
+metabolits = {'Tau'; 'GSH'; 'GABA'; 'Lac'};
+
+
+[patients, featuresTable, metabolitsTable] = clean_store_data(folders, commonPath, 'CID*.resp', ...
+    [0.1 1], 50, behavior, metabolits_file,  metabolits, features);
+
+
+save("study1AggregatedData.mat", "patients", "featuresTable", "metabolitsTable")
+patients = load("study1AggregatedData.mat");
+
+
+
+%% -------------------- Correlations
+
+[pvalues, h1, h2] = correlationResp(patients.patients, patients.metabolitsTable.Tau, ...
+    patients.featuresTable.BreathingRate, 'Tau', 'BR');
+
 
 
 % slider(signal_band)
