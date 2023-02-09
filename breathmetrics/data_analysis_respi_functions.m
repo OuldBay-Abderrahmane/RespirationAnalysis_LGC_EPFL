@@ -65,6 +65,10 @@
         inhalePauseDurations
         exhalePauseDurations
         
+        intervalStart
+        intervalStop
+        nValidIntervals
+        
         secondaryFeatures
         
         respiratoryPhase
@@ -91,12 +95,13 @@
    
     methods
         %%% constructor %%%
-        function Bm = data_analysis_respi_functions(resp, srate, dataType)
+        function Bm = data_analysis_respi_functions(resp, srate, dataType, sampleStatus)
             Bm.smoothedRespiration=resp;
-            Bm.srate = srate;
-            Bm.dataType = dataType;
+            Bm.srate=srate;
+            Bm.dataType=dataType;
             Bm.featureEstimationsComplete=0;
             Bm.featuresManuallyEdited=0;
+            Bm.statuses = sampleStatus;
 
             Bm.checkClassInputs();
             
@@ -332,8 +337,8 @@
             % peaks and troughs are identified the same way for human
             % airflow and breathing belt recordings
             if strfind(Bm.dataType, 'human')==1
-                [putativePeaks, putativeTroughs] = ...
-                    findRespiratoryExtrema_modif1( thisResp, Bm.srate );
+                [putativePeaks, putativeTroughs, Bm.intervalStart, Bm.intervalStop, Bm.nValidIntervals] = ...
+                    findRespiratoryExtrema_modif1(thisResp, Bm.srate, Bm.statuses);
                 
             % same extrema finding for thermocouple and airflow recordings
             % in rodents
@@ -542,7 +547,7 @@
                 % are caluclated.
                 verbose=1;
             end
-            respStats  = data_analysis_respi_features_calculations( Bm, verbose );
+            respStats = data_analysis_respi_features_calculations(Bm, verbose);
             Bm.secondaryFeatures = respStats;
             Bm.checkFeatureEstimations();
         end
@@ -687,10 +692,8 @@
                     strcmp(Bm.dataType,'rodentThermocouple')
                 % only subset of features can be calculated in rodent
                 % thermocouple recordings.
-%                 Bm.findInhaleAndExhaleOffsets(verbose);
-%                 Bm.findBreathAndPauseDurations();
-%                 Bm.findInhaleAndExhaleVolumes(verbose);
-                Bm.data_analysis_respi_features_caluclations(verbose);
+                
+                Bm.data_analysis_respi_features_caluclations();
             end
             Bm = Bm.checkFeatureEstimations();
             

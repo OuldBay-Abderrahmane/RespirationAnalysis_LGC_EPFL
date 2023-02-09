@@ -1,4 +1,4 @@
-function respirationStatistics  = data_analysis_respi_features_calculations( Bm, verbose )
+function respirationStatistics = data_analysis_respi_features_calculations(Bm, verbose)
 
 %calculates features of respiratory data. Running this method assumes that 
 % you have already derived all possible features
@@ -10,25 +10,52 @@ end
 if verbose == 1
     disp('Calculating secondary respiratory features')
 end
+breathingRate_tot = []; 
+interBreathInterval_tot = []; 
+avgInhaleVolume_tot = []; 
+avgExhaleVolume_tot = []; 
+avgTidalVolume_tot = []; 
+minuteVentilation_tot = []; 
 
+inhaleDutyCycle_tot = []; 
+exhaleDutyCycle_tot = []; 
 
+CVInhaleDuration_tot = [];
+CVExhaleDuration_tot = [];
 
+avgInhaleDuration_tot = [];
+avgExhaleDuration_tot = [];
 
+cvBreathingRate_tot = []; 
+CVTidalVolume_tot = []; 
+
+% loop through nValidIntervals so that we can get all features
+for iInterval = 1:Bm.nValidIntervals
+    %generate indexes of where the segment starts and stops
+    currentSegmentIdxs = Bm.intervalStart(iInterval):Bm.intervalStop(iInterval);
+    % generate proportion of the segment compared to the full length
+    if Bm.nValidIntervals == 1
+        currentSegmentProportion = 1;
+    else
+        currentSegmentProportion = (((numel(currentSegmentIdxs))*100/(Bm.intervalStop(end)))/100);
+    end
+    
 % first find valid breaths
 
 % edited 4/11/20
 % split nBreaths into inhales and exhales to fix indexing error from 
 % myPeak error in findRespiratoryExtrema
+
+currentInhaleOnsets = find(Bm.inhaleOnsets > currentSegmentIdxs(1) & Bm.inhaleOnsets < currentSegmentIdxs(end));
+currentExhaleOnsets = find(Bm.exhaleOnsets > currentSegmentIdxs(1) & Bm.exhaleOnsets < currentSegmentIdxs(end));
     
-nInhales=length(Bm.inhaleOnsets);
-nExhales=length(Bm.exhaleOnsets);
-
-
-if isempty(Bm.statuses)
-    validInhaleInds=1:nInhales;
-    validExhaleInds=1:nExhales;
+nInhales=length(currentInhaleOnsets);
+nExhales=length(currentExhaleOnsets);
+if isempty(Bm.statuses(currentSegmentIdxs))
+    validInhaleInds=currentInhaleOnsets;
+    validExhaleInds=currentExhaleOnsets;
 else
-    IndexInvalid = strfind(Bm.statuses,'rejected');
+    IndexInvalid = strfind(Bm.statuses(currentSegmentIdxs),'rejected');
     invalidBreathInds = find(not(cellfun('isempty',IndexInvalid)));
     validInhaleInds=setdiff(1:nInhales,invalidBreathInds);
     validExhaleInds=setdiff(1:nExhales,invalidBreathInds);
@@ -59,13 +86,18 @@ for i = 1:nValidInhales-1
 end
 
 breathingRate = Bm.srate/mean(breathDiffs);
+breathingRate = breathingRate*currentSegmentProportion;
+
+
 %%% Inter-Breath Interval %%%
 % inter-breath interval is the inverse of breathing rate
 interBreathInterval = 1/breathingRate;
+interBreathInterval = interBreathInterval*currentSegmentProportion;
 
 %%% Coefficient of Variation of Breathing Rate %%% 
 % this describes variability in time between breaths
 cvBreathingRate = std(breathDiffs)/mean(breathDiffs);
+cvBreathingRate = cvBreathingRate*currentSegmentProportion;
 
 if strcmp(Bm.dataType,'humanBB')
     
@@ -75,20 +107,24 @@ if strcmp(Bm.dataType,'humanBB')
     % inhales
     validInhaleVolumes=excludeOutliers(Bm.inhaleVolumes, validInhaleInds);
     avgInhaleVolume = mean(validInhaleVolumes);
-
+    avgInhaleVolume = avgInhaleVolume*currentSegmentProportion;
 
     % exhales
     validExhaleVolumes=excludeOutliers(Bm.exhaleVolumes, validExhaleInds);
     avgExhaleVolume = mean(validExhaleVolumes);
-
-
+    avgExhaleVolume = avgExhaleVolume*currentSegmentProportion;
+    
     %%% Tidal volume %%%
     % tidal volume is the total air displaced by inhale and exhale
     avgTidalVolume = avgInhaleVolume + avgExhaleVolume;
+    avgTidalVolume = avgTidalVolume*currentSegmentProportion;
+
 
     %%% Minute Ventilation %%%
     % minute ventilation is the product of respiration rate and tidal volume
     minuteVentilation = breathingRate * avgTidalVolume;
+    minuteVentilation = minuteVentilation*currentSegmentProportion;
+
 
     %%% Duty Cycle %%%
     % duty cycle is the percent of each breathing cycle that was spent in
@@ -96,8 +132,11 @@ if strcmp(Bm.dataType,'humanBB')
     
     % get avg duration of each phase
     avgInhaleDuration = nanmean(Bm.inhaleDurations);
+    avgInhaleDuration = avgInhaleDuration*currentSegmentProportion;
+
     avgExhaleDuration = nanmean(Bm.exhaleDurations);
-    
+    avgExhaleDuration = avgExhaleDuration*currentSegmentProportion;
+
     % because pauses don't necessarily occur on every breath, multiply this
     % value by total number that occured.
 %     pctInhalePause=sum(~isnan(Bm.inhalePauseDurations))/nValidInhales;
@@ -107,13 +146,17 @@ if strcmp(Bm.dataType,'humanBB')
 %     avgExhalePauseDuration = nanmean(Bm.exhalePauseDurations(validExhaleInds)) * pctExhalePause;
 
     inhaleDutyCycle = avgInhaleDuration / interBreathInterval;
+    inhaleDutyCycle = inhaleDutyCycle*currentSegmentProportion;
 %     inhalePauseDutyCycle = avgInhalePauseDuration / interBreathInterval;
     exhaleDutyCycle = avgExhaleDuration / interBreathInterval;
+    exhaleDutyCycle = exhaleDutyCycle*currentSegmentProportion;
 %     exhalePauseDutyCycle = avgExhalePauseDuration / interBreathInterval;
 
     CVInhaleDuration = nanstd(Bm.inhaleDurations)/avgInhaleDuration;
+    CVInhaleDuration = CVInhaleDuration*currentSegmentProportion;
 %     CVInhalePauseDuration = nanstd(Bm.inhalePauseDurations)/avgInhalePauseDuration;
     CVExhaleDuration = nanstd(Bm.exhaleDurations)/avgExhaleDuration;
+    CVExhaleDuration = CVExhaleDuration*currentSegmentProportion;
 %     CVExhalePauseDuration = nanstd(Bm.exhalePauseDurations)/avgExhalePauseDuration;
 
     % if there were no pauses, the average pause duration is 0, not nan
@@ -128,9 +171,10 @@ if strcmp(Bm.dataType,'humanBB')
     % coefficient of variation in breath size describes variability of breath
     % sizes
     CVTidalVolume = std(validInhaleVolumes)/mean(validInhaleVolumes);
+    CVTidalVolume = CVTidalVolume*currentSegmentProportion;
+
     
 end
-
 
 % if strcmp(Bm.dataType,'humanAirflow') || strcmp(Bm.dataType,'rodentAirflow')
 %     % the following features can only be computed for airflow data
@@ -147,6 +191,25 @@ end
 %     avgMaxExhaleFlow = mean(validExhaleFlows);
 
 % assigning values for output
+    % compute corrected values according to proportion of the signal.
+breathingRate_tot = sum([breathingRate_tot breathingRate]); 
+interBreathInterval_tot = sum([interBreathInterval_tot interBreathInterval]); 
+avgInhaleVolume_tot = sum([avgInhaleVolume_tot avgInhaleVolume]); 
+avgExhaleVolume_tot = sum([avgExhaleVolume_tot avgExhaleVolume]); 
+avgTidalVolume_tot = sum([avgTidalVolume_tot avgTidalVolume]);
+minuteVentilation_tot = sum([minuteVentilation_tot minuteVentilation]);
+
+inhaleDutyCycle_tot = sum([inhaleDutyCycle_tot inhaleDutyCycle]);
+exhaleDutyCycle_tot = sum([exhaleDutyCycle_tot exhaleDutyCycle]); 
+
+CVInhaleDuration_tot = sum([CVInhaleDuration_tot CVInhaleDuration]);
+CVExhaleDuration_tot = sum([CVExhaleDuration_tot CVExhaleDuration]);
+
+avgInhaleDuration_tot = sum([avgInhaleDuration_tot avgInhaleDuration]);
+avgExhaleDuration_tot = sum([avgExhaleDuration_tot avgExhaleDuration]);
+
+cvBreathingRate_tot = sum([cvBreathingRate_tot cvBreathingRate]);
+CVTidalVolume_tot = sum([CVTidalVolume_tot CVTidalVolume]); 
 
 if strcmp(Bm.dataType,'humanAirflow') || strcmp(Bm.dataType,'rodentAirflow')
     keySet= {
@@ -241,27 +304,27 @@ elseif strcmp(Bm.dataType,'humanBB') || strcmp(Bm.dataType,'rodentThermocouple')
 
         };
     valueSet={
-        breathingRate; 
-        interBreathInterval; 
-        avgInhaleVolume; 
-        avgExhaleVolume; 
-        avgTidalVolume; 
-        minuteVentilation; 
+        breathingRate_tot; 
+        interBreathInterval_tot; 
+        avgInhaleVolume_tot; 
+        avgExhaleVolume_tot; 
+        avgTidalVolume_tot; 
+        minuteVentilation_tot; 
         
-        inhaleDutyCycle; 
-        exhaleDutyCycle; 
+        inhaleDutyCycle_tot; 
+        exhaleDutyCycle_tot; 
         
-        CVInhaleDuration;
-        CVExhaleDuration;
+        CVInhaleDuration_tot;
+        CVExhaleDuration_tot;
         
-        avgInhaleDuration;
-        avgExhaleDuration;
+        avgInhaleDuration_tot;
+        avgExhaleDuration_tot;
         
-        cvBreathingRate; 
-        CVTidalVolume; 
+        cvBreathingRate_tot; 
+        CVTidalVolume_tot; 
         };
 end
-    
+
 respirationStatistics = containers.Map(keySet,valueSet);
 
 if verbose == 1
@@ -271,7 +334,7 @@ if verbose == 1
         fprintf('\n')
     end
 end
-
+end
 end
 
 function validVals=excludeOutliers(origVals,validBreathInds)
