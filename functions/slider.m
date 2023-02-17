@@ -1,4 +1,19 @@
-function [signalCleaned] = slider(signal, signal_time, window, file)
+function [signalCleaned, signal_binary] = slider(signal, signal_time, window, file)
+    % [signalCleaned, signal_binary] = slider(signal, signal_time, window, file)
+    % Give the values of interest during a physical task
+    % 
+    % INPUT
+    % - signal: file 
+    % - signal_time: time array of the task
+    % - window: sampling rate
+    % - file:
+    %
+    % OUTPUT :
+    % signalCleaned: indexes of the start of choice and effort phase
+    % signal_binary : effort level chosen
+    % 
+    % Developed by Abderrahmane Ould Bay - 15/02/2023
+
     signal_binary = [];
     signalCleaned = signal;
     signalAbs = abs(signal);
@@ -33,16 +48,16 @@ function [signalCleaned] = slider(signal, signal_time, window, file)
 
     if ~isempty(list_clusters)
         for i = 1:length(list_clusters)
-            current_cluster = list_clusters(i);
-            
+            current_cluster = list_clusters(i);             
             figure; plot(signal_time(1:length(signalCleaned)), signalCleaned, 'Color', 'k');
             hold on
             yyaxis right; plot(signal_time(1:length(signal_binary)), signal_binary, 'Color', 'r');
+            xlabel("Temps")
             title(file)
             yn = questdlg('Remove cluster?','Remove cluster','Yes','No','Yes');
             if strcmp(yn,'Yes')
-                signal_binary(current_cluster.idx: current_cluster.end) = 1;
-                signalCleaned(current_cluster.idx: current_cluster.end) = NaN;
+            signal_binary(current_cluster.idx: current_cluster.end) = 1;
+            signalCleaned(current_cluster.idx: current_cluster.end) = NaN;
             elseif strcmp(yn,'No')
 
             end

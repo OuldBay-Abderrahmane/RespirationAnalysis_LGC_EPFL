@@ -1,121 +1,199 @@
-function [patients, featuresTable, metabolitsTable] = ...
-    clean_store_data(folders, commonPath, filePattern, filterBand, ...
+function [patients, subjectsTotalFeatures, metabolitsTable] = ...
+    clean_store_data(folders, foldersBehaviors, commonPath, commonPathBehavior, filePattern, filterBand, ...
     freq, behavior, metabolits_file, metabolits, features)
-    
-    
-    [subjectNumberArray, runNumberArray, bmObjArray, ...
-        typeArray, kEm, kEp] = deal([], [], [], [], [], []);
-    
+
+    % [patients, subjectsTotalFeatures, metabolitsTable] = ...
+    %   clean_store_data(folders, foldersBehaviors, commonPath, commonPathBehavior, filePattern, filterBand, ...
+    %   freq, behavior, metabolits_file, metabolits, features)
+    % Give all tables and features of all subjects
+    % 
+    % INPUT :
+    % - folders: folders for resp data directory list ex: dir(fullfile(commonPath, 'CID*')) 
+    % - foldersBehaviors: folders for resp data directory list ex: dir(fullfile(commonPath, 'CID*')) 
+    % - commonPath : path to resp experiment folders
+    % - commonPathBehavior: path to behavior experiment folders 
+    % - filePattern: regex pattern of the file we extract ex: 'CID*.resp'
+    % - filterBand : filter band ex : [0.1 1]
+    % - freq : sampling rate
+    % - behavior: file of the behaviors
+    % - metabolits_file: file of the metabolits measures
+    % - metabolits : array of metabolits to study
+    % - features : array of features to study
+    %
+    % OUTPUT :
+    % patients: oragnized table of patients basics measures 
+    % subjectsTotalFeatures : array of features for each run
+    % metabolitsTable : table of metabolits measures
+    % 
+    % Developed by Abderrahmane Ould Bay - 15/02/2023
+
+    %% Initializations
+    % File naming structure to get the run number
+    expressionRun = 'n[0-9]*';
+
+    [subjectNumberArray, runNumberArray, ...
+        typeArray, kEm, kEp] = deal([], [], [], [], []);
+
     metabolits_save = {};
     metabolits_save{1, length(metabolits)} = [];
 
-    features_save = {};
-    features_save{1, length(features)} = [];
-
-    counter = 0;
+    subjectsTotalFeatures = [];
+    
+    %% Looping on all folders and files to get our measurments
     for iFolders = 1:length(folders)
         rootDir = fullfile(commonPath, folders(iFolders).name, filePattern);
         folderPath = fullfile(commonPath, folders(iFolders).name);
         fileNames = dir(rootDir);
         subjectNumber = erase(folders(iFolders).name, 'CID');
 
-%       Cell Array of 2 x features size
-% Ep    []  []  [] ...  []
-% Em    []  []  [] ...  []
-        exerciseFeatures = {};
-        exerciseFeatures{2, length(features)} = [];
+        rootDirBehavior = fullfile(commonPathBehavior, foldersBehaviors(iFolders).name, 'CID*_task.mat');
+        folderPathBehavior = fullfile(commonPathBehavior, foldersBehaviors(iFolders).name);
+        fileNamesBehavior = dir(rootDirBehavior);
 
-
+        %% Verify if the measures are in both matabolits and behavior, if a subject only has one measure we discard it
         if ismember(subjectNumber, behavior.subject_id) && ismember(subjectNumber, metabolits_file.subject_id)
             indexE = find(strcmp(cellstr(subjectNumber), behavior.subject_id));
             indexdmPFC = find(strcmp(cellstr(subjectNumber), metabolits_file.subject_id));
 
-            expressionRun = 'n[0-9]*';
             run = runs_definition('study1', subjectNumber, 'respiration_and_noSatRun');   
-            
-
-            [EmPrev, EpPrev] = deal(0, 0);
 
             for iFiles = 1:length(fileNames)
+                %% Regex manipulation to keep the subject number
                 runNumber = erase(regexp( fileNames(iFiles).name, expressionRun,'match'), 'n');
-                runNumber = str2num(runNumber{1});
-   
-                if ismember(runNumber, run.runsToKeep)
-                    counter = counter + 1;
-                    
+                runNumber = str2double(runNumber{1});
+                
+                behaviorFiles =  strjoin(split([fileNamesBehavior.name],'.mat'), '.mat ') ;
+                behaviorFile = regexp(behaviorFiles, strcat('\w*n', num2str(runNumber), '\w*.mat') ,'match');
+
+                %% Verify if the run is in the run_definitions file
+                if ismember(runNumber, run.runsToKeep) 
                     [signalFiltered, time, start] = filterSignal(folderPath, fileNames(iFiles).name, filterBand, freq);
-                    signalCleaned = slider(signalFiltered, time, 300, fileNames(iFiles).name);
+                    [signalCleaned, signal_binary] = slider(signalFiltered, time, 300, fileNames(iFiles).name);
                     
-                    for i = 1:length(metabolits)
-                        metabolits_save{1, i} = [metabolits_save{1, i} getMetabolit(metabolits_file, metabolits{i}, indexdmPFC)];
-                    end
-
-                    bmObj = data_analysis_respi_functions(signalCleaned, 50, 'humanBB');
-                    bmObj.baselineCorrectedRespiration = signalCleaned;
-                    bmObj = estimateAllRespiFeatures( bmObj, 0, 'simple', 1, 0 );
-
-
-                    subjectNumberArray = [subjectNumberArray; subjectNumber];
-                    runNumberArray = [runNumberArray; runNumber];
-                    bmObjArray = [bmObjArray; bmObj];
-                    
-                    if ismember(runNumber, [run.Ep.runsToKeep])
-                        typeArray = [typeArray; 'Ep'];
-                        kEp = [kEp; behavior.kEp(indexE)];
-                        kEm = [kEm; NaN];
-
-                        for i = 1:length(exerciseFeatures)
-                            exerciseFeatures{1, i} = [exerciseFeatures{1, i} bmObj.secondaryFeatures(features{i})];
+                    if sum(signal_binary)/length(signal_binary) > 0.5
+                        for i = 1:length(metabolits)
+                            metabolits_save{1, i} = [metabolits_save{1, i} getMetabolit(metabolits_file, metabolits{i}, indexdmPFC)];
                         end
-%                         
-                        if EpPrev == 0
-                            for i = 1:length(features_save)
-                                features_save{1, i}(counter) = getAverageSecondaryFeature(features{i},exerciseFeatures{1, i}); 
-                            end
-                            EpPrev = counter;
-                        else
-                            for i = 1:length(features_save)
-                                features_save{1, i}([EpPrev counter]) = getAverageSecondaryFeature(features{i},exerciseFeatures{1, i}); 
-                            end
-                            EpPrev=0;
-                        end
-                    elseif ismember(runNumber, [run.Em.runsToKeep])
-                        typeArray = [typeArray; 'Em'];
-                        kEm = [kEm; behavior.kEm(indexE)];
-                        kEp = [kEp; NaN];
+                        
+                        %% Initialization of the time after cleaning and putting it to the T0
+                        newTime = 0:1/freq:time(length(signalCleaned))- time(start);
+                        newTime = newTime( newTime>=0 );
+                        removeFirst = length(signalCleaned)-length(newTime);
+                        signalCleaned = signalCleaned(removeFirst:end);
+                        
+                        %% Saving the subject information
+                        subjectNumberArray = [subjectNumberArray; subjectNumber];
+                        runNumberArray = [runNumberArray; runNumber];
 
-                        for i = 1:length(exerciseFeatures)
-                            exerciseFeatures{2, i} = [exerciseFeatures{2, i} bmObj.secondaryFeatures(features{i})];
-                        end
+                        NUMBER_OF_PHASES = 2;
+                        %% Separation between physical and mental runs
+                        if ismember(runNumber, [run.Ep.runsToKeep]) 
 
-                        if EmPrev == 0
-                            for i = 1:length(features_save)
-                                features_save{1, i}(counter) = getAverageSecondaryFeature(features{i},exerciseFeatures{2, i}); 
+                            %% Separate the different phases  using the schematic 
+                            %   Choice Phase = fbx {i-1} => choice{i}
+                            %   Effort Phase = preEffortCross {i-1} => fbx {i-1}
+                            [timings, EChosen, Emax, RChosen] = getBehaviorPhysical(fullfile(folderPathBehavior, behaviorFile{1}), newTime, freq);
+
+                            %% Objects for saving the features that we extract
+                            phase_save = {};
+                            phase_save{2, length(EChosen)-1} = [];
+                            
+                            exerciseFeatures = {};
+                            exerciseFeatures{1, length(features)} = [];
+
+                            % j being the number of cycle in the run
+                            % i being the number of phase by cycle
+                            for j = 2:length(EChosen)
+                                for i = 1:NUMBER_OF_PHASES
+                                    try
+                                        if i == 1
+                                            signal = signalCleaned(timings(3, j-1):timings(1, j));
+                                        else 
+                                            signal = signalCleaned(timings(i, j):timings(3, j));
+                                        end
+
+                                        %% Create data_analysis_respi_functions object and estimate the features and save them
+                                        bmObj = data_analysis_respi_functions(signal, 50, 'humanBB');
+                                        bmObj.baselineCorrectedRespiration = signal;
+                                        bmObj = estimateAllRespiFeatures( bmObj, 0, 'simple', 1 , 0 );
+
+                                        for w = 1:length(exerciseFeatures)
+                                            exerciseFeatures{1, w} =  bmObj.secondaryFeatures(features{w});
+                                        end
+                                        % FORM: phase_save = [breathObject {BreathingRate, AvgTidalVolume, MinuteVentilation} duration]
+                                        phase_save{i, j-1} = {bmObj exerciseFeatures};
+                                    catch 
+                                        phase_save{i, j-1} = {bmObj exerciseFeatures};
+                                    end
+                                end
                             end
-                            EmPrev = counter;
-                        else
-                            for i = 1:length(features_save)
-                                features_save{1, i}([EmPrev counter]) = getAverageSecondaryFeature(features{i},exerciseFeatures{2, i}); 
+                            %% Save the patients specific values, the phases, option choosed, max option displayed, reward
+                            subjectsTotalFeatures = [subjectsTotalFeatures ; {'Ep', subjectNumber, phase_save, EChosen(2:end), Emax(2:end), RChosen(2:end)}];
+
+                            typeArray = [typeArray; 'Ep'];
+                            kEp = [kEp; behavior.kEp(indexE)];
+                            kEm = [kEm; NaN];
+                                         
+                        
+                        elseif ismember(runNumber, [run.Em.runsToKeep]) 
+
+                            %% Separate the different phases  using the schematic 
+                            %   Choice Phase = fbx {i-1} => choice{i}
+                            %   Effort Phase = preEffortCross {i-1} => fbx {i-1}
+                            [timings, EChosen, Emax, RChosen] = getBehaviorMental(fullfile(folderPathBehavior, behaviorFile{1}), newTime, freq);
+                            
+                            %% Objects for saving the features that we extract
+                            phase_save = {};
+                            phase_save{2, length(EChosen)-1} = [];
+                            
+                            exerciseFeatures = {};
+                            exerciseFeatures{1, length(features)} = [];
+
+                            % j being the number of cycle in the run
+                            % i being the number of phase by cycle
+                            for j = 2:length(EChosen)
+                                for i = 1:NUMBER_OF_PHASES
+                                    try
+                                        if i == 1
+                                            signal = signalCleaned(timings(3, j-1):timings(1, j));
+                                        else 
+                                            signal = signalCleaned(timings(i, j):timings(3, j));
+                                        end
+                                        %% Create data_analysis_respi_functions object and estimate the features and save them
+                                        bmObj = data_analysis_respi_functions(signal, 50, 'humanBB');
+                                        bmObj.baselineCorrectedRespiration = signal;
+                                        bmObj = estimateAllRespiFeatures( bmObj, 0, 'simple', 1 , 0 );
+
+                                        for w = 1:length(exerciseFeatures)
+                                            exerciseFeatures{1, w} =  bmObj.secondaryFeatures(features{w});
+                                        end
+                                        % FORM: phase_save = [breathObject {BreathingRate, AvgTidalVolume, MinuteVentilation} duration]
+                                        phase_save{i, j-1} = {bmObj exerciseFeatures};
+                                    catch 
+                                        phase_save{i, j-1} = {bmObj exerciseFeatures};
+                                    end
+                                end
                             end
-                            EmPrev=0;
+                            %% Save the patients specific values, the phases, option choosed, max option displayed, reward
+                            subjectsTotalFeatures = [subjectsTotalFeatures ; {'Em', subjectNumber, phase_save, EChosen(2:end), Emax(2:end), RChosen(2:end)}];
+
+                            typeArray = [typeArray; 'Em'];
+                            kEm = [kEm; behavior.kEm(indexE)];
+                            kEp = [kEp; NaN];
                         end
                     end
                 end
             end
-
         end
     end
+    
+    %% Final save in the form of tables of all the infos
     for i = 1:length(metabolits_save)
         metabolits_save{i} = metabolits_save{i}';
     end
     metabolits_save = cell2mat(metabolits_save);
     metabolitsTable = array2table(metabolits_save, 'VariableNames',metabolits);
-    for i = 1:length(features_save)
-        features_save{i} = features_save{i}';
-    end
-    features_save = cell2mat(features_save);
-    featuresTable = array2table(features_save, 'VariableNames',features);
 
-    patients = table(subjectNumberArray, runNumberArray, bmObjArray, typeArray, kEm, kEp);
+    patients = table(subjectNumberArray, runNumberArray, typeArray, kEm, kEp);
 
 end

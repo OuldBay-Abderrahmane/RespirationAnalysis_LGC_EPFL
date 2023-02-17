@@ -1,4 +1,16 @@
 function [average] = getAverageSecondaryFeature(type, arrayToAverage)
+    % [average] = getAverageSecondaryFeature(type, arrayToAverage)
+    % Give the average of a feature vector and give NaN if not supported
+    % 
+    % INPUT
+    % - type: feature type 
+    % - arrayToAverage:  
+    %
+    % OUTPUT :
+    % average: average of the feature value 
+    %
+    % Developed by Abderrahmane Ould Bay - 15/02/2023
+
     if isequal(type, 'BreathingRate') 
         average = sum(arrayToAverage)/length(arrayToAverage);
     elseif isequal(type, 'MinuteVentilation')

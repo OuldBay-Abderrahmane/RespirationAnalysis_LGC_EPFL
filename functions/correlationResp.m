@@ -1,27 +1,21 @@
-function [pvalues, h1, h2] = correlationResp(patients, study, feature, studyName, featureName)
+function [pvalE] = correlationResp(patients, study, feature, type, studyName, featureName)
+    % [pvalE] = correlationResp(patients, study, feature, type, studyName, featureName)
+    % Plot the correlation between patients caracteristics 
+    %
+    % INPUT
+    % - patients: table of patients
+    % - study: Fisrt studied caracter (matabolits, kEp, kEm)
+    % - feature: Second studied caracter (breathing Rate, Tidal Volume)    
+    % - Type: Em et Ep 
+    % OUTPUT :
+    % Plot of the correlation and the pvalues of the correlation
+    %
+    % Developed by Abderrahmane Ould Bay - 15/02/2023
     
-    patientsEp = strcmp(cellstr(patients.typeArray), 'Ep');
-    patientsEm = strcmp(cellstr(patients.typeArray), 'Em');
-
-    indexEp = find(patientsEp(:,1)==1);
-    indexEm = find(patientsEm(:,1)==1);
-
-    tableEp = unique(patients(indexEp,:),'rows');
-    tableEm = unique(patients(indexEm,:),'rows');
-
-    studyEp = study(indexEp);
-    studyEm = study(indexEm);
-
-    featureEp = feature(indexEp);
-    featureEm = feature(indexEm);
-
-
-    [correlation, pvalEp, th1]= corrplot([featureEp studyEp], 'varNames', {featureName, studyName}); 
-    filenameEp = strcat('corrPlots\', studyName,'_', featureName, '_Ep', '.png');
-    h1 = th1;
-    [correlation, pvalEm, th2]= corrplot([featureEm studyEm], 'varNames', {featureName, studyName}); 
-    filenameEm = strcat('corrPlots\', studyName,'_', featureName, '_Em', '.png');
-    h2 = th2;
-    pvalues = [{pvalEp, {featureName, studyName}, 'Ep'}, {pvalEm, {featureName, studyName}, 'Ep'}];
-
+    patientsE = strcmp(cellstr(patients.typeArray), type);
+    indexE = find(patientsE(:,1)==1);
+    studyE = study(indexE);
+    featureE  = feature;
+    
+    [correlation, pvalE, th2]= corrplot([featureE studyE], 'varNames', {studyName, featureName});
 end

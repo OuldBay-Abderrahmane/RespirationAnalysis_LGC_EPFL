@@ -1,0 +1,9 @@
+
+function [x] = remove(x, meanx, stdx)
+    for i  
+        if x > meanx + 2*stdx
+            x = meanx + 2*stdx
+        elseif x < meanx - 2*stdx
+            x = meanx - 2*stdx
+        end
+end
